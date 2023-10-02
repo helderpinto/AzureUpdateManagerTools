@@ -170,6 +170,25 @@ Connect-AzAccount -Identity
 
 $subscriptions = Get-AzSubscription | Where-Object { $_.State -eq "Enabled" } | ForEach-Object { "$($_.Id)"}
 
+Write-Output "Getting the latest maintenance configuration execution run..."
+
+$argQuery = @"
+patchinstallationresources
+| where type == 'microsoft.compute/virtualmachines/patchinstallationresults'
+| extend maintenanceRunId=tolower(split(properties.maintenanceRunId,'/providers/microsoft.maintenance/applyupdates')[0])
+| where maintenanceRunId == '$MaintenanceConfigurationId'
+| top 1 by todatetime(properties.lastModifiedDateTime)
+| project lastRunDateTime = datetime_add('Hour',-12,todatetime(properties.lastModifiedDateTime))
+"@
+
+$lastRunDateTime = Search-AzGraph -Query $argQuery -Subscription $subscriptions
+if ($lastRunDateTime -and $lastRunDateTime.GetType().Name -eq "PSResourceGraphResponse")
+{
+    $lastRunDateTime = $lastRunDateTime.Data
+}
+
+Write-Output "Latest run for maintenance configuration $MaintenanceConfigurationId ended at $($lastRunDateTime[0].lastRunDateTime.AddHours(12).ToString("u"))"
+
 $ARGPageSize = 1000
 
 $installedPackages = @()
@@ -183,6 +202,7 @@ patchinstallationresources
 | where type == 'microsoft.compute/virtualmachines/patchinstallationresults'
 | extend maintenanceRunId=tolower(split(properties.maintenanceRunId,'/providers/microsoft.maintenance/applyupdates')[0])
 | where maintenanceRunId == '$MaintenanceConfigurationId'
+| where properties.lastModifiedDateTime > todatetime('$($lastRunDateTime[0].lastRunDateTime.ToString("u"))')
 | extend vmId = tostring(split(tolower(id), '/patchinstallationresults/')[0])
 | extend osType = tostring(properties.osType)
 | extend lastDeploymentStart = tostring(properties.startDateTime)
@@ -190,6 +210,7 @@ patchinstallationresources
 | join kind=inner (
     patchinstallationresources
     | where type == 'microsoft.compute/virtualmachines/patchinstallationresults/softwarepatches'
+    | where properties.lastModifiedDateTime > todatetime('$($lastRunDateTime[0].lastRunDateTime.ToString("u"))')
     | extend vmId = tostring(split(tolower(id), '/patchinstallationresults/')[0])
     | extend patchName = tostring(properties.patchName)
     | extend patchVersion = tostring(properties.version)
