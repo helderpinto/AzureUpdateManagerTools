@@ -5,62 +5,12 @@
 .DESCRIPTION 
     This Runbook uses Azure Update Manager installation results to query the latest update packages installed on a set of machines, and based on a maintenance configuration already deployed, 
     and creates one or more maintenance configurations based on the next stages definitions set as a parameter.
-    This runbook requires the Az.Accounts, Az.Resources and Az.ResourceGraph Powershell modules.
 
     These parameters are needed:
         .PARAMETER MaintenanceConfigurationId
-            ARM Id of the Maintenance Configuration to be used as a reference to create deployments for further stages
-        .PARAMETER NEXTSTAGEPROPERTIEJSON
-            JSON format parameter that will define the scope of the new maintenance configurations. Next an example of a this parameter:
-                [
-                    {
-                        "stageName": "PreProduction-Windows",
-                        "offsetDays": 7,
-                        "scope": [
-                            "/subscriptions/00000000-0000-0000-0000-000000000000",
-                            "/subscriptions/00000000-0000-0000-0000-000000000001"
-                        ],
-                        "tagSettings": {
-                            "tags": {
-                                "UpdateManagementStage": [
-                                    "PreProduction"
-                                ],
-                                "NeedReboot": [
-                                    "True"
-                                ]
-                            },
-                            "filterOperator": "All"
-                        },
-                        "locations": []
-                    },
-                    { 
-                        "stageName": "Production-Windows",
-                        "offsetDays": 14,
-                        "scope": [
-                            "/subscriptions/00000000-0000-0000-0000-000000000000",
-                            "/subscriptions/00000000-0000-0000-0000-000000000001"
-                        ],
-                        "tagSettings": {
-                            "tags": {
-                                "UpdateManagementStage": [
-                                    "Production"
-                                ],
-                                "NeedReboot": [
-                                    "True"
-                                ]
-                            },
-                            "filterOperator": "All"
-                        },
-                        "locations": []
-					}
-                ]
-            The above format is based on two tags already deployed on VMs, one for the update phase of the VMs, and the other for the need of reboot after applying updates.
-
-        And last but not least, the runbook uses an Automation Account Managed Identity, for authentication purposes, with the following permissions:
-            - Virtual Machine Contributor on Root MG Scope
-            - Reader on Root MG Scope
-            - Automation Contributor on the Automation account
-
+            ARM Id of the Maintenance Configuration to be used as a reference to create maintenance configurations for further stages
+        .PARAMETER NextStagePropertiesJson
+            JSON-formatted parameter that will define the scope of the new maintenance configurations. See https://github.com/helderpinto/AzureUpdateManagerTools for more details.
 .NOTES
     AUTHOR: Helder Pinto and Wiszanyel Cruz
     LAST EDIT: Oct 02, 2023
@@ -73,62 +23,6 @@ param(
     [parameter(Mandatory = $true)]
     [string]$NextStagePropertiesJson 
 )
-
-<#
-$NextStagePropertiesJson = @"
-[
-    {
-        "stageName": "windows-phase1-aum-mc",
-        "offsetDays": 7,
-        "scope": [
-            "/subscriptions/dfabc7a1-ca6f-4a95-8a7a-faddb6ef9b7b"
-        ],
-        "filter": {
-            "resourceTypes": [
-                "microsoft.compute/virtualmachines"
-            ],
-            "resourceGroups": [
-            ],
-            "tagSettings": {
-                "tags": {
-                    "aum": [
-                        "phase1"
-                    ],
-                    "boundary": [
-                        "lab"
-                    ]
-                },
-                "filterOperator": "All"
-            },
-            "locations": []
-        }
-    },
-    {
-        "stageName": "windows-phase2-aum-mc",
-        "offsetDays": 14,
-        "scope": [
-            "/subscriptions/dfabc7a1-ca6f-4a95-8a7a-faddb6ef9b7b"
-        ],
-        "filter": {
-            "resourceTypes": [
-                "microsoft.compute/virtualmachines"
-            ],
-            "resourceGroups": [
-            ],
-            "tagSettings": {
-                "tags": {
-                    "aum": [
-                        "phase2"
-                    ]
-                },
-                "filterOperator": "All"
-            },
-            "locations": []
-        }
-    }
-]
-"@
-#>
 
 function ConvertTo-Hashtable {
     [CmdletBinding()]
