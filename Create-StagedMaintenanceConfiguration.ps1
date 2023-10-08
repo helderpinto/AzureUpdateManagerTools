@@ -281,6 +281,7 @@ if ($installedPackages.Count -gt 0)
             {
                 Write-Output "Maintenance configuration assignment creation/update failed (HTTP $($response.StatusCode))."
                 Write-Output $response.Content
+                throw "Maintenance configuration assignment creation/update failed (HTTP $($response.StatusCode))."
             }
         }
     }
@@ -289,4 +290,3 @@ else
 {
     Write-Output "No need to create further maintenance stages"
 }
-

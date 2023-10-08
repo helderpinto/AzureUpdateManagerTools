@@ -19,10 +19,15 @@ This staged patching approach can be implemented with the help of the [Create-St
 
 ### Pre-requisites
 
-- The machines in the scope of this solution must have the [Customer Managed Schedules patch orchestration mode](https://learn.microsoft.com/en-us/azure/update-center/manage-update-settings).
-- The machines in the scope of this solution must be [supported by Azure Update Manager](https://learn.microsoft.com/en-us/azure/update-center/support-matrix).
-- At least one Maintenance Configuration covering a part of the machines in scope. As this maintenance configuration will serve as the reference for the following patching stages, it should be assigned to non-production machines and, ideally, recur every few weeks.
-- An Azure Automation Account with an associated Managed Identity (can be a system or user-assigned identity) and the following modules installed: `Az.Accounts`, `Az.Resources` and `Az.ResourceGraph`. This solution is based on an Automation Account, but you can use other approaches, such as Azure Functions.
+* The machines in the scope of this solution must have the [Customer Managed Schedules patch orchestration mode](https://learn.microsoft.com/en-us/azure/update-center/manage-update-settings).
+* The machines in the scope of this solution must be [supported by Azure Update Manager](https://learn.microsoft.com/en-us/azure/update-center/support-matrix).
+* At least one Maintenance Configuration covering a part of the machines in scope. As this maintenance configuration will serve as the reference for the following patching stages, it should be assigned to non-production machines and, ideally, recur every few weeks.
+* An Azure Automation Account with an associated Managed Identity (can be a system or user-assigned identity) and the following modules installed: `Az.Accounts`, `Az.Resources` and `Az.ResourceGraph`. This solution is based on an Automation Account, but you can use other approaches, such as Azure Functions.
+* The Automation Account Managed Identity must have the following **minimum** permissions (as a custom role) on the subscription where the reference maintenance configuration was created:
+  * */read
+  * Microsoft.Maintenance/maintenanceConfigurations/write
+  * Microsoft.Maintenance/configurationAssignments/write
+  * Microsoft.Resources/deployments/*
 
 ### Create-StagedMaintenanceConfiguration script parameters
 
@@ -212,10 +217,9 @@ TODO
 
 This runbook requires the Az.Accounts, Az.Resources and Az.ResourceGraph Powershell modules.
 
-And last but not least, the runbook uses an Automation Account Managed Identity, for authentication purposes, with the following permissions:
-    - Virtual Machine Contributor on Root MG Scope
-    - Reader on Root MG Scope
-    - Automation Contributor on the Automation account
+And last but not least, the runbook uses an Automation Account Managed Identity, for authentication purposes, with the following permissions on the subscription where the reference maintenance configuration is:
+    - Reader
+    - Scheduled Patching Contributor
 
 ### Recommended staged patching strategy
 
