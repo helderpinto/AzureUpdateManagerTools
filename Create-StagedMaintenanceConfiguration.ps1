@@ -212,16 +212,12 @@ if ($installedPackages.Count -gt 0)
                         `"installPatches`": {
                             `"linuxParameters`": {
                                 `"classificationsToInclude`": [
-                                    `"Critical`",
-                                    `"Security`"
                                 ],
                                 `"packageNameMasksToExclude`": null,
                                 `"packageNameMasksToInclude`": $packageNameMasksToInclude
                             },
                             `"windowsParameters`": {
                                 `"classificationsToInclude`": [
-                                    `"Critical`",
-                                    `"Security`"
                                 ],
                                 `"kbNumbersToExclude`": null,
                                 `"kbNumbersToInclude`": $kbNumbersToInclude
