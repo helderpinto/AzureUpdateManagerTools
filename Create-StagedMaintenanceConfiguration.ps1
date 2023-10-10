@@ -13,7 +13,7 @@
             JSON-formatted parameter that will define the scope of the new maintenance configurations. See https://github.com/helderpinto/AzureUpdateManagerTools for more details.
 .NOTES
     AUTHOR: Helder Pinto and Wiszanyel Cruz
-    LAST EDIT: Oct 02, 2023
+    LAST EDIT: Oct 10, 2023
 #>
 
 param(
@@ -96,7 +96,7 @@ patchinstallationresources
 | where type == 'microsoft.compute/virtualmachines/patchinstallationresults'
 | extend maintenanceRunId=tolower(split(properties.maintenanceRunId,'/providers/microsoft.maintenance/applyupdates')[0])
 | where maintenanceRunId == '$MaintenanceConfigurationId'
-| where properties.lastModifiedDateTime > todatetime('$($lastRunDateTime[0].lastRunDateTime.ToString("u"))')
+| where todatetime(properties.lastModifiedDateTime) > todatetime('$($lastRunDateTime[0].lastRunDateTime.ToString("u"))')
 | extend vmId = tostring(split(tolower(id), '/patchinstallationresults/')[0])
 | extend osType = tostring(properties.osType)
 | extend lastDeploymentStart = tostring(properties.startDateTime)
@@ -104,7 +104,7 @@ patchinstallationresources
 | join kind=inner (
     patchinstallationresources
     | where type == 'microsoft.compute/virtualmachines/patchinstallationresults/softwarepatches'
-    | where properties.lastModifiedDateTime > todatetime('$($lastRunDateTime[0].lastRunDateTime.ToString("u"))')
+    | where todatetime(properties.lastModifiedDateTime) > todatetime('$($lastRunDateTime[0].lastRunDateTime.ToString("u"))')
     | extend vmId = tostring(split(tolower(id), '/patchinstallationresults/')[0])
     | extend patchName = tostring(properties.patchName)
     | extend patchVersion = tostring(properties.version)
@@ -191,8 +191,9 @@ if ($installedPackages.Count -gt 0)
 
     foreach ($stageProperties in $NextStageProperties) 
     {
+        $stageDayOfWeek = $lastDeploymentDate.AddDays($stageProperties.offsetDays).DayOfWeek
         $stageStartTime = $lastDeploymentDate.AddDays($stageProperties.offsetDays).ToString("u").Substring(0,16)
-        $stageEndTime = $lastDeploymentDate.AddDays($stageProperties.offsetDays+1).ToString("u").Substring(0,16)
+        $stageEndTime = $lastDeploymentDate.AddDays($stageProperties.offsetDays).AddHours(5).ToString("u").Substring(0,16)
         $maintenanceConfName = $stageProperties.stageName
         $maintenanceConfSubId = $MaintenanceConfigurationId.Split("/")[2]
         $maintenanceConfRG = $MaintenanceConfigurationId.Split("/")[4]
@@ -211,14 +212,12 @@ if ($installedPackages.Count -gt 0)
                         `"maintenanceScope`": `"InGuestPatch`",
                         `"installPatches`": {
                             `"linuxParameters`": {
-                                `"classificationsToInclude`": [
-                                ],
+                                `"classificationsToInclude`": null,
                                 `"packageNameMasksToExclude`": null,
                                 `"packageNameMasksToInclude`": $packageNameMasksToInclude
                             },
                             `"windowsParameters`": {
-                                `"classificationsToInclude`": [
-                                ],
+                                `"classificationsToInclude`": null,
                                 `"kbNumbersToExclude`": null,
                                 `"kbNumbersToInclude`": $kbNumbersToInclude
                             },
@@ -232,7 +231,7 @@ if ($installedPackages.Count -gt 0)
                             `"duration`": `"$maintenanceDuration`",
                             `"timeZone`": `"UTC`",
                             `"expirationDateTime`": `"$stageEndTime`",
-                            `"recurEvery`": `"Week`"
+                            `"recurEvery`": `"1Week $stageDayOfWeek`"
                         }
                     }
                 }

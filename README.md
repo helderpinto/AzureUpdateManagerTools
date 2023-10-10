@@ -17,6 +17,10 @@ This staged patching approach can be implemented with the help of the [Create-St
 
 ![Staged Patching Architecture](./images/aum-staged-patching.jpg "Staged Patching Architecture")
 
+### Recommended staged patching strategy
+
+TODO
+
 ### Pre-requisites
 
 * The machines in the scope of this solution must have the [Customer Managed Schedules patch orchestration mode](https://learn.microsoft.com/en-us/azure/update-center/manage-update-settings).
@@ -28,6 +32,10 @@ This staged patching approach can be implemented with the help of the [Create-St
   * Microsoft.Maintenance/maintenanceConfigurations/write
   * Microsoft.Maintenance/configurationAssignments/write
   * Microsoft.Resources/deployments/*
+
+### Setup instructions
+
+TODO
 
 ### Create-StagedMaintenanceConfiguration script parameters
 
@@ -210,17 +218,3 @@ for Maintenance Configuration Assignments ([see reference](https://learn.microso
     }
 ]
 ```
-
-### Setup instructions
-
-TODO
-
-This runbook requires the Az.Accounts, Az.Resources and Az.ResourceGraph Powershell modules.
-
-And last but not least, the runbook uses an Automation Account Managed Identity, for authentication purposes, with the following permissions on the subscription where the reference maintenance configuration is:
-    - Reader
-    - Scheduled Patching Contributor
-
-### Recommended staged patching strategy
-
-TODO
