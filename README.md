@@ -19,13 +19,20 @@ This staged patching approach can be implemented with the help of the [Create-St
 
 ### Recommended staged patching strategy
 
-TODO
+The value of a staged patching solution is to ensure that patches deployed in a production environment are previously tested in non-production environments. The more consistent and repeatable the patching workflow is, the more confidence you have in the patches that reach production. For this reason, it is recommended to define maintenance configurations specifically for each OS version and ensure further stages are applied only to machines of the same OS version. For example, if your environment has a mix of Windows 2016, Windows 2019, Ubuntu 20.4 and Ubuntu 22.4 servers, you should define four different staged patching workflows, one for each OS version. With this approach, for example, Windows 2019 production machines will only get patches that were tested in similar Windows 2019 non-production machines and, similarly, Ubuntu 20.4 production servers will only get package updates that were tested in Ubuntu 20.4 non-production servers.
+
+Tagging is your best friend in this strategy. By tagging your servers according to their OS version and patching stage, it will be easier to dynamically define the scope of a specific patching stage. Continuing with the example above, your servers can be tagged as follows:
+
+* A `aum-stage` tag for each of the patching stages (e.g., `aum-stage`=`dev`, `aum-stage`=`preprod`, `aum-stage`=`prod`, etc.).
+* A `os-name` tag for each of the OS versions of your environment (e.g., `windows2016`, `windows2019`, `ubuntu20`, `ubuntu22`, etc.)
+
+You can choose whatever tagging strategy that meets your staged patching requirements, provided you end up with a predictable patching workflow.
 
 ### Pre-requisites
 
 * The machines in the scope of this solution must have the [Customer Managed Schedules patch orchestration mode](https://learn.microsoft.com/en-us/azure/update-center/manage-update-settings).
 * The machines in the scope of this solution must be [supported by Azure Update Manager](https://learn.microsoft.com/en-us/azure/update-center/support-matrix).
-* At least one Maintenance Configuration covering a part of the machines in scope. As this maintenance configuration will serve as the reference for the following patching stages, it should be assigned to non-production machines and, ideally, recur every few weeks.
+* At least one Maintenance Configuration covering a part of the machines in scope. As this maintenance configuration will serve as the reference for the following patching stages, it should be assigned to non-production machines and, ideally, recur every few weeks. See above recommendations for an effective patching strategy.
 * An Azure Automation Account with an associated Managed Identity (can be a system or user-assigned identity) and the following modules installed: `Az.Accounts`, `Az.Resources` and `Az.ResourceGraph`. This solution is based on an Automation Account, but you can use other approaches, such as Azure Functions.
 * The Automation Account Managed Identity must have the following **minimum** permissions (as a custom role) on the subscription where the reference maintenance configuration was created:
   * */read
@@ -155,7 +162,7 @@ for Maintenance Configuration Assignments ([see reference](https://learn.microso
 ```json
 [
     {
-        "stageName": "Pre-Production",
+        "stageName": "windows2019-preprod",
         "offsetDays": 7,
         "scope": [
             "/subscriptions/00000000-0000-0000-0000-000000000000",
@@ -171,7 +178,7 @@ for Maintenance Configuration Assignments ([see reference](https://learn.microso
             "tagSettings": {
                 "tags": {
                     "aum-stage": [
-                        "phase1"
+                        "preprod"
                     ],
                     "os-name": [
                         "windows2019"
@@ -186,7 +193,7 @@ for Maintenance Configuration Assignments ([see reference](https://learn.microso
         }
     },
     {
-        "stageName": "Production",
+        "stageName": "windows2019-prod",
         "offsetDays": 14,
         "scope": [
             "/subscriptions/00000000-0000-0000-0000-000000000000",
@@ -202,7 +209,7 @@ for Maintenance Configuration Assignments ([see reference](https://learn.microso
             "tagSettings": {
                 "tags": {
                     "aum-stage": [
-                        "phase2"
+                        "prod"
                     ],
                     "os-name": [
                         "windows2019"
