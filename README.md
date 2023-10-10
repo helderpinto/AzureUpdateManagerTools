@@ -24,7 +24,7 @@ The value of a staged patching solution is to ensure that patches deployed in a 
 Tagging is your best friend in this strategy. By tagging your servers according to their OS version and patching stage, it will be easier to dynamically define the scope of a specific patching stage. Continuing with the example above, your servers can be tagged as follows:
 
 * A `aum-stage` tag for each of the patching stages (e.g., `aum-stage`=`dev`, `aum-stage`=`preprod`, `aum-stage`=`prod`, etc.).
-* A `os-name` tag for each of the OS versions of your environment (e.g., `windows2016`, `windows2019`, `ubuntu20`, `ubuntu22`, etc.)
+* A `os-name` tag for each of the OS versions of your environment (e.g., `os-name`=`windows2016`, `os-name`=`windows2019`, `os-name`=`ubuntu20`, `os-name`=`ubuntu22`, etc.)
 
 You can choose whatever tagging strategy that meets your staged patching requirements, provided you end up with a predictable patching workflow.
 
