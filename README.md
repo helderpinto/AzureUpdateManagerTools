@@ -26,13 +26,19 @@ Tagging is your best friend in this strategy. By tagging your servers according 
 * A `aum-stage` tag for each of the patching stages (e.g., `aum-stage`=`dev`, `aum-stage`=`preprod`, `aum-stage`=`prod`, etc.).
 * A `os-name` tag for each of the OS versions of your environment (e.g., `os-name`=`windows2016`, `os-name`=`windows2019`, `os-name`=`ubuntu20`, `os-name`=`ubuntu22`, etc.)
 
-You can choose whatever tagging strategy that meets your staged patching requirements, provided you end up with a predictable patching workflow.
+You can choose whatever tagging strategy that meets your staged patching requirements, provided you end up with a predictable patching workflow. Once you have tagged all your servers according to their stage in the different patching workflows, you have to define a stage 0 (e.g., for servers tagged `aum-stage`=`dev`) recurring Maintenance Configuration, for each of the OS versions. For the next stages, you have two options to leverage this solution:
+
+1. Schedule the [Create-StagedMaintenanceConfiguration](./Create-StagedMaintenanceConfiguration.ps1) runbook to run after stage 0 (e.g., the next day) and configure it to create/update all the next stages (e.g., stages 1, 2, etc.) based on the results of stage 0.
+1. Chain all the stages to each other, by scheduling the [Create-StagedMaintenanceConfiguration](./Create-StagedMaintenanceConfiguration.ps1) runbook for each of the stages before production:
+  * After stage 0, create/update stage 1 based on the results of stage 0
+  * After stage 1, create/update stage 2 based on the results of stage 1
+  * etc.
 
 ### Pre-requisites
 
-* The machines in the scope of this solution must have the [Customer Managed Schedules patch orchestration mode](https://learn.microsoft.com/en-us/azure/update-center/manage-update-settings).
-* The machines in the scope of this solution must be [supported by Azure Update Manager](https://learn.microsoft.com/en-us/azure/update-center/support-matrix).
-* At least one Maintenance Configuration covering a part of the machines in scope. As this maintenance configuration will serve as the reference for the following patching stages, it should be assigned to non-production machines and, ideally, recur every few weeks. See above recommendations for an effective patching strategy.
+* The machines in the scope of this solution must be [supported by Azure Update Manager](https://learn.microsoft.com/en-us/azure/update-center/support-matrix) and fulfill its [pre-requisites](https://learn.microsoft.com/en-us/azure/update-center/overview?tabs=azure-vms#prerequisites).
+* The machines in the scope of this solution must have the [Customer Managed Schedules patch orchestration mode](https://learn.microsoft.com/en-us/azure/update-center/manage-update-settings), a pre-requisite for [scheduled patching](https://learn.microsoft.com/en-us/azure/update-center/scheduled-patching).
+* At least one recurrent scheduled patching Maintenance Configuration covering a part of the machines in scope. As this maintenance configuration will serve as the reference for the following patching stages, it should be assigned to non-production machines and, ideally, recur every few weeks. See above recommendations for an effective patching strategy.
 * An Azure Automation Account with an associated Managed Identity (can be a system or user-assigned identity) and the following modules installed: `Az.Accounts`, `Az.Resources` and `Az.ResourceGraph`. This solution is based on an Automation Account, but you can use other approaches, such as Azure Functions.
 * The Automation Account Managed Identity must have the following **minimum** permissions (as a custom role) on the subscription where the reference maintenance configuration was created:
   * */read
@@ -42,14 +48,20 @@ You can choose whatever tagging strategy that meets your staged patching require
 
 ### Setup instructions
 
-TODO
+1. Ensure your Azure VMs and Azure Arc-enabled servers are tagged according to the staged patching strategy you defined (see above). Use tags to group your servers according to their patching phase and OS version.
+1. Create a recurrent scheduled patching Maintenance Configuration for Phase 0 of each OS version in your environment. See instructions [here](https://learn.microsoft.com/en-us/azure/update-center/scheduled-patching?tabs=schedule-updates-single-machine%2Cschedule-updates-scale-overview#schedule-recurring-updates-at-scale). Assign this Maintenance Configuration to the servers that will serve as the initial testbed for your patches. You can assign servers either directly to the Maintenance Configuration or dynamically, with a [Dynamic Scope](https://learn.microsoft.com/en-us/azure/update-center/manage-dynamic-scoping).
+1. Create or reuse an [Azure Automation Account](https://learn.microsoft.com/en-us/azure/automation/automation-create-standalone-account).
+1. Import the [Create-StagedMaintenanceConfiguration.ps1](./Create-StagedMaintenanceConfiguration.ps1) Runbook into the Automation Account, by following [these steps](https://learn.microsoft.com/en-us/azure/automation/manage-runbooks#import-a-runbook). Download the runbook first to your local machine. The runbook must be configured as PowerShell 5.1.
+1. Create an [Azure Automation schedule](https://learn.microsoft.com/en-us/azure/automation/shared-resources/schedules#create-a-schedule) for each of the Phase 0 Maintenance Configurations (one per OS version). The schedule must have the same frequency of the Maintenance Configuration it refers to, with at least a 8 hours offset. For example, if the Maintenance Configuration is scheduled on Mondays, every 2 weeks at 8:00pm, then the respective Azure Automation schedule should be scheduled on Tuesdays, every 2 weeks at least at 4:00am.
+1. Link the `Create-StagedMaintenanceConfiguration` runbook to each of the schedules and specify its parameters according to the instructions below. To obtain the Maintenance Configuration ID, check the "Properties" blade of the Maintenance Configuration.
+1. (Optional) If you prefer to adopt a more conservative chained staged approach, you need to create additional schedules (for further stages before production) and link them to the same runbook. In this case, you will have to anticipate the Maintenance Configuration IDs that will result from the previous stages executions, which will be in the form `/subscriptions/<phase 0 maintenance configuration subscription ID>/resourceGroups/<phase 0 maintenance configuration resource group>/providers/Microsoft.Maintenance/maintenanceConfigurations/<previous stage name>`.
 
 ### Create-StagedMaintenanceConfiguration script parameters
 
 The [Create-StagedMaintenanceConfiguration.ps1](./Create-StagedMaintenanceConfiguration.ps1) PowerShell script receives the following parameters:
 
-- `MaintenanceConfigurationId`: ARM Id of the Maintenance Configuration to be used as a reference to create maintenance configurations for further stages
-- `NextStagePropertiesJson`: JSON-formatted parameter that will define the scope of the new maintenance configurations, with the following schema:
+- `MaintenanceConfigurationId`: Azure Resource Manager ID of the Maintenance Configuration to be used as a reference to create maintenance configurations for further stages
+- `NextStagePropertiesJson`: JSON-formatted parameter that will define the scope of the next maintenance configurations, with the following schema:
 
 ```json
 {
@@ -156,7 +168,7 @@ The [Create-StagedMaintenanceConfiguration.ps1](./Create-StagedMaintenanceConfig
 ```
 
 The example below implements a scenario in which the Pre-Production and Production stages are deployed respectively 7 days and 14 days after the reference maintenance configuration (Dev/Test). The maintenance scope is targeted at two subscriptions (`00000000-0000-0000-0000-000000000000` and `00000000-0000-0000-0000-000000000001`), for
-both Windows Azure VMs and Azure Arc-enabled servers tagged with `aum-stage=phase1|phase2` and `os-name=windows2019`. The `filter` property follows the format defined
+both Windows Azure VMs and Azure Arc-enabled servers tagged with `aum-stage=preprod|prod` and `os-name=windows2019`. The `filter` property follows the format defined
 for Maintenance Configuration Assignments ([see reference](https://learn.microsoft.com/en-us/azure/templates/microsoft.maintenance/configurationassignments?pivots=deployment-language-arm-template)).
 
 ```json
