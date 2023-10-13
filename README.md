@@ -23,16 +23,20 @@ The value of a staged patching solution is to ensure that patches deployed in a 
 
 Tagging is your best friend in this strategy. By tagging your servers according to their OS version and patching stage, it will be easier to dynamically define the scope of a specific patching stage. Continuing with the example above, your servers can be tagged as follows:
 
-* A `aum-stage` tag for each of the patching stages (e.g., `aum-stage`=`dev`, `aum-stage`=`preprod`, `aum-stage`=`prod`, etc.).
+* A `aum-stage` tag for each of the patching stages (e.g., `aum-stage`=`dev`, `aum-stage`=`preprod`, `aum-stage`=`prod`, `aum-stage`=`prod-ha-instance1`, `aum-stage`=`prod-ha-instance2`, etc.).
 * A `os-name` tag for each of the OS versions of your environment (e.g., `os-name`=`windows2016`, `os-name`=`windows2019`, `os-name`=`ubuntu20`, `os-name`=`ubuntu22`, etc.)
 
-You can choose whatever tagging strategy that meets your staged patching requirements, provided you end up with a predictable patching workflow. Once you have tagged all your servers according to their stage in the different patching workflows, you have to define a stage 0 (e.g., for servers tagged `aum-stage`=`dev`) recurring Maintenance Configuration, for each of the OS versions. For the next stages, you have two options to leverage this solution:
+You can choose whatever tagging strategy that meets your staged patching requirements, provided you end up with a predictable patching workflow. Once you have tagged all your servers according to their stage in the different patching workflows, you have to define a stage 0 recurring Maintenance Configuration (e.g., for servers tagged `aum-stage`=`dev`), for each of the OS versions. For the next stages, you have two options to leverage this solution:
 
 1. Schedule the [Create-StagedMaintenanceConfiguration](./Create-StagedMaintenanceConfiguration.ps1) runbook to run after stage 0 (e.g., the next day) and configure it to create/update all the next stages (e.g., stages 1, 2, etc.) based on the results of stage 0.
 1. Chain all the stages to each other, by scheduling the [Create-StagedMaintenanceConfiguration](./Create-StagedMaintenanceConfiguration.ps1) runbook for each of the stages before production:
   * After stage 0, create/update stage 1 based on the results of stage 0
   * After stage 1, create/update stage 2 based on the results of stage 1
   * etc.
+
+**IMPORTANT**: you must ensure the last stage (production) is not scheduled before the next iteration of the phase 0 stage, otherwise you would end up having the production Maintenance Configuration overwritten with a new schedule/patch selection before it is actually deployed.
+
+Validating the quality of the patching stages before production is one important perspective not addressed by this solution. It is not sufficient to patch dev/test servers - we must ensure the patches passed minimum quality tests before reaching production. At this moment, you must run a parallel process that performs this validation (e.g., automated tests running in the patched servers). As soon as Azure Update Manager supports pre- and post-tasks ([planned for the last quarter of 2023](https://learn.microsoft.com/en-us/azure/update-center/whats-upcoming)), we will be able to integrate quality assurance in this solution.
 
 ### Pre-requisites
 
