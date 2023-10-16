@@ -15,7 +15,7 @@ The typical setup of staging patching can be as follows:
 
 This staged patching approach can be implemented with the help of the [Create-StagedMaintenanceConfiguration.ps1](./Create-StagedMaintenanceConfiguration.ps1) PowerShell script, which runs after stage 0 and automates stages 1 and 2. This script can be, for example, deployed as an Azure Automation Runbook scheduled to run after the Dev/Test recurrent update cycle (see diagram below). It works for both Windows and Linux scenarios (Azure VMs and Azure Arc-enabled servers).
 
-![Staged Patching Architecture](./images/aum-staged-patching.jpg "Staged Patching Architecture")
+![Staged Patching Workflow](./images/aum-staged-patching.jpg "Staged Patching Workflow")
 
 ### Recommended staged patching strategy
 
@@ -49,6 +49,10 @@ Validating the quality of the patching stages before production is one important
   * Microsoft.Maintenance/maintenanceConfigurations/write
   * Microsoft.Maintenance/configurationAssignments/write
   * Microsoft.Resources/deployments/*
+
+### Architecture
+
+![Staged Patching Architecture](./images/AUM - Staged Solution Architecture.jpg "Staged Patching Architecture")
 
 ### Setup instructions
 
