@@ -52,7 +52,7 @@ Validating the quality of the patching stages before production is one important
 
 ### Architecture
 
-![Staged Patching Architecture](./images/AUM-StagedSolutionArchitecture.jpg "Staged Patching Architecture")
+![Staged Patching Architecture](./images/AUM-StagedSolutionArchitecture2.jpg "Staged Patching Architecture")
 
 ### Setup instructions
 
