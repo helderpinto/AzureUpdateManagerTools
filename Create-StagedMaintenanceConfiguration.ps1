@@ -68,7 +68,7 @@ Write-Output "Getting the latest maintenance configuration execution run..."
 
 $argQuery = @"
 patchinstallationresources
-| where type == 'microsoft.compute/virtualmachines/patchinstallationresults'
+| where type endswith '/patchinstallationresults'
 | extend maintenanceRunId=tolower(split(properties.maintenanceRunId,'/providers/microsoft.maintenance/applyupdates')[0])
 | where maintenanceRunId == '$MaintenanceConfigurationId'
 | top 1 by todatetime(properties.lastModifiedDateTime)
@@ -93,7 +93,7 @@ Write-Output "Querying for packages to install..."
 
 $argQuery = @"
 patchinstallationresources
-| where type == 'microsoft.compute/virtualmachines/patchinstallationresults'
+| where type endswith '/patchinstallationresults'
 | extend maintenanceRunId=tolower(split(properties.maintenanceRunId,'/providers/microsoft.maintenance/applyupdates')[0])
 | where maintenanceRunId == '$MaintenanceConfigurationId'
 | where todatetime(properties.lastModifiedDateTime) > todatetime('$($lastRunDateTime[0].lastRunDateTime.ToString("u"))')
@@ -103,7 +103,7 @@ patchinstallationresources
 | extend deploymentStatus = tostring(properties.status)
 | join kind=inner (
     patchinstallationresources
-    | where type == 'microsoft.compute/virtualmachines/patchinstallationresults/softwarepatches'
+    | where type endswith '/patchinstallationresults/softwarepatches'
     | where todatetime(properties.lastModifiedDateTime) > todatetime('$($lastRunDateTime[0].lastRunDateTime.ToString("u"))')
     | extend vmId = tostring(split(tolower(id), '/patchinstallationresults/')[0])
     | extend patchName = tostring(properties.patchName)
