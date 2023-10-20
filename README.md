@@ -34,7 +34,7 @@ You can choose whatever tagging strategy that meets your staged patching require
   * After stage 1, create/update stage 2 based on the results of stage 1
   * etc.
 
-**IMPORTANT**: you must ensure the last stage (production) is not scheduled before the next iteration of the phase 0 stage, otherwise you will end up having the production Maintenance Configuration overwritten with a new schedule/patch selection before it is actually deployed.
+**IMPORTANT**: you must ensure the last stage (production) is not scheduled before the next iteration of the phase 0 stage, otherwise you will end up having the production Maintenance Configuration overwritten with a new schedule/patch selection before it is actually deployed. Also, bear in mind that, as [Azure Resource Graph keeps the patching results history for up to 30 days](https://learn.microsoft.com/en-us/azure/update-center/query-logs), your updates cycle must not exceed this interval.
 
 Validating the quality of the patching stages before production is one important perspective not addressed by this solution. It is not sufficient to patch dev/test servers - we must ensure the patches pass minimum quality tests before reaching production. At this moment, you must run a parallel process that performs this validation (e.g., automated tests running in the patched servers). As soon as Azure Update Manager supports pre- and post-tasks ([planned for the last quarter of 2023](https://learn.microsoft.com/en-us/azure/update-center/whats-upcoming)), we will be able to integrate quality assurance in this solution.
 
