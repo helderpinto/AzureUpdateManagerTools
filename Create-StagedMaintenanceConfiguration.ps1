@@ -13,7 +13,6 @@
             JSON-formatted parameter that will define the scope of the new maintenance configurations. See https://github.com/helderpinto/AzureUpdateManagerTools for more details.
 .NOTES
     AUTHOR: Helder Pinto and Wiszanyel Cruz
-    LAST EDIT: Oct 10, 2023
 #>
 
 param(
@@ -81,7 +80,14 @@ if ($lastRunDateTime -and $lastRunDateTime.GetType().Name -eq "PSResourceGraphRe
     $lastRunDateTime = $lastRunDateTime.Data
 }
 
-Write-Output "Latest run for maintenance configuration $MaintenanceConfigurationId ended at $($lastRunDateTime[0].lastRunDateTime.AddHours(12).ToString("u"))"
+if (-not([String]::IsNullOrEmpty($lastRunDateTime)))
+{
+    Write-Output "Latest run for maintenance configuration $MaintenanceConfigurationId ended at $($lastRunDateTime[0].lastRunDateTime.AddHours(12).ToString("u"))"
+}
+else
+{
+    throw "No maintenance configuration runs found for $MaintenanceConfigurationId"
+}
 
 $ARGPageSize = 1000
 
