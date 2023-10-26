@@ -69,18 +69,19 @@ $argQuery = @"
 patchinstallationresources
 | where type endswith '/patchinstallationresults'
 | extend maintenanceRunId=tolower(split(properties.maintenanceRunId,'/providers/microsoft.maintenance/applyupdates')[0])
-| where maintenanceRunId == '$MaintenanceConfigurationId'
+| where maintenanceRunId =~ '$MaintenanceConfigurationId'
 | top 1 by todatetime(properties.lastModifiedDateTime)
 | project lastRunDateTime = datetime_add('Hour',-12,todatetime(properties.lastModifiedDateTime))
 "@
 
 $lastRunDateTime = Search-AzGraph -Query $argQuery -Subscription $subscriptions
-if ($lastRunDateTime -and $lastRunDateTime.GetType().Name -eq "PSResourceGraphResponse")
+
+if ($lastRunDateTime.Data -and $lastRunDateTime.GetType().Name -like "PSResourceGraphResponse*")
 {
     $lastRunDateTime = $lastRunDateTime.Data
 }
 
-if (-not([String]::IsNullOrEmpty($lastRunDateTime)))
+if ($lastRunDateTime[0])
 {
     Write-Output "Latest run for maintenance configuration $MaintenanceConfigurationId ended at $($lastRunDateTime[0].lastRunDateTime.AddHours(12).ToString("u"))"
 }
@@ -101,7 +102,7 @@ $argQuery = @"
 patchinstallationresources
 | where type endswith '/patchinstallationresults'
 | extend maintenanceRunId=tolower(split(properties.maintenanceRunId,'/providers/microsoft.maintenance/applyupdates')[0])
-| where maintenanceRunId == '$MaintenanceConfigurationId'
+| where maintenanceRunId =~ '$MaintenanceConfigurationId'
 | where todatetime(properties.lastModifiedDateTime) > todatetime('$($lastRunDateTime[0].lastRunDateTime.ToString("u"))')
 | extend vmId = tostring(split(tolower(id), '/patchinstallationresults/')[0])
 | extend osType = tostring(properties.osType)
