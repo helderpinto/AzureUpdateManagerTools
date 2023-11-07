@@ -178,7 +178,7 @@ if ($installedPackages.Count -gt 0)
     $linuxPackages = @()
     foreach ($linuxPatch in $linuxPatches) 
     {
-        $linuxPatchVersion = ($installedPackages | Where-Object { $_.osType -eq "Linux" -and $_.patchName -eq $linuxPatch } | Select-Object -Property patchVersion -Unique | Sort-Object -Property patchVersion -Descending).patchVersion
+        $linuxPatchVersion = ($installedPackages | Where-Object { $_.osType -eq "Linux" -and $_.patchName -eq $linuxPatch } | Select-Object -Property patchVersion -Unique | Sort-Object -Property patchVersion -Descending | Select-Object -First 1).patchVersion
         $linuxPackage = "$linuxPatch=$linuxPatchVersion"
         $linuxPackages += $linuxPackage
     }
