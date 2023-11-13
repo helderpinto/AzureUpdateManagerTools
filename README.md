@@ -243,3 +243,7 @@ for Maintenance Configuration Assignments ([see reference](https://learn.microso
     }
 ]
 ```
+
+### Disclaimer
+
+This solution is not supported under any Microsoft standard support program or service. The scripts are provided AS IS without warranty of any kind. The entire risk arising out of the use or performance of the scripts and documentation remains with you.
