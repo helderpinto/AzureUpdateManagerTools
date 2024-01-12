@@ -62,6 +62,12 @@ Validating the quality of the patching stages before production is one important
 1. Link the `Create-StagedMaintenanceConfiguration` runbook to each of the schedules and specify its parameters according to the instructions below. To obtain the Maintenance Configuration ID, check the "Properties" blade of the Maintenance Configuration.
 1. (Optional) If you prefer to adopt a more conservative chained staged approach, you need to create additional schedules (for further stages before production) and link them to the same runbook. In this case, you will have to anticipate the Maintenance Configuration IDs that will result from the previous stages' executions, which will be in the form `/subscriptions/<phase 0 maintenance configuration subscription ID>/resourceGroups/<phase 0 maintenance configuration resource group>/providers/Microsoft.Maintenance/maintenanceConfigurations/<previous stage name>`.
 
+### Pre- and post-maintenance tasks
+
+Pre- and post-maintenance tasks in Azure Update Manager follow an event-based architecture, in which you subscribe to events coming from a system topic associated to the Configuration Maintenance, and use, for example, an Azure Automation runbook or Azure Function as the destination of the event. You can learn more about how to configure pre- and post-maintenance in the Azure Update Manager [pre and post events overview](https://learn.microsoft.com/en-us/azure/update-manager/pre-post-scripts-overview), and also on the [how-to guide](https://learn.microsoft.com/en-us/azure/update-manager/manage-pre-post-events) and tutorials for [Azure Automation](https://learn.microsoft.com/en-us/azure/update-manager/tutorial-webhooks-using-runbooks) and [Azure Functions](https://learn.microsoft.com/en-us/azure/update-manager/tutorial-using-functions). You can find in this repository a code sample for one of the pre- and post-maintenance scenarios: turn machines on with [Start-StagedMaintenanceVMs.ps1](./Start-StagedMaintenanceVMs.ps1) and turn them off with [Deallocate-StagedMaintenanceVMs.ps1](,/Deallocate-StagedMaintenanceVMs.ps1).
+
+NOTE: the staged patching solution here described does not propagate pre- and post-maintenance tasks coming from the reference maintenance configuration to the following stages, but you can manually configure them once the subsequent stages have been created for the first time.
+
 ### Create-StagedMaintenanceConfiguration script parameters
 
 The [Create-StagedMaintenanceConfiguration.ps1](./Create-StagedMaintenanceConfiguration.ps1) PowerShell script receives the following parameters:
