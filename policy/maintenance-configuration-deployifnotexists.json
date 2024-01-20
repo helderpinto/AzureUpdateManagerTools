@@ -1,0 +1,281 @@
+{
+    "mode": "All",
+    "displayName": "Deploy Maintenance Configuration Assignment for a given maintenance ID and dynamic scope filter",
+    "policyRule": {
+        "if": {
+            "allOf": [
+                {
+                    "field": "type",
+                    "equals": "Microsoft.resources/subscriptions"
+                }
+            ]
+        },
+        "then": {
+            "effect": "[parameters('effect')]",
+            "details": {
+                "type": "Microsoft.Maintenance/configurationAssignments",
+                "roleDefinitionIds": [
+                    "/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
+                ],
+                "existenceScope": "Subscription",
+                "existenceCondition": {
+                    "allOf": [
+                        {
+                            "field": "Microsoft.Maintenance/configurationAssignments/maintenanceConfigurationId",
+                            "equals": "[parameters('maintenanceConfigurationResourceId')]"
+                        },
+                        {
+                            "field": "Microsoft.Maintenance/configurationAssignments/resourceId",
+                            "equals": "[subscription().id]"
+                        }
+                    ]
+                },
+                "deploymentScope": "Subscription",
+                "deployment": {
+                    "subscriptionId": "[subscription().id]",
+                    "location": "westeurope",
+                    "properties": {
+                        "mode": "incremental",
+                        "template": {
+                            "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+                            "contentVersion": "1.0.0.0",
+                            "parameters": {
+                                "maintenanceConfigurationResourceId": {
+                                    "type": "string"
+                                },
+                                "resourceGroups": {
+                                    "type": "array"
+                                },
+                                "operatingSystemTypes": {
+                                    "type": "array"
+                                },
+                                "resourceTypes": {
+                                    "type": "array"
+                                },
+                                "locations": {
+                                    "type": "array"
+                                },
+                                "tagsDefinition": {
+                                    "type": "object"
+                                },
+                                "tagOperator": {
+                                    "type": "string"
+                                }
+                            },
+                            "resources": [
+                                {
+                                    "type": "Microsoft.Resources/deployments",
+                                    "apiVersion": "2020-06-01",
+                                    "name": "configurationAssignmentDeployment",
+                                    "location": "westeurope",
+                                    "properties": {
+                                        "mode": "Incremental",
+                                        "template": {
+                                            "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                                            "contentVersion": "1.0.0.0",
+                                            "parameters": {
+                                                "maintenanceConfigurationResourceId": {
+                                                    "type": "string"
+                                                },
+                                                "resourceGroups": {
+                                                    "type": "array"
+                                                },
+                                                "operatingSystemTypes": {
+                                                    "type": "array"
+                                                },
+                                                "resourceTypes": {
+                                                    "type": "array"
+                                                },
+                                                "locations": {
+                                                    "type": "array"
+                                                },
+                                                "tagsDefinition": {
+                                                    "type": "object"
+                                                },
+                                                "tagOperator": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "resources": [
+                                                {
+                                                    "type": "Microsoft.Maintenance/configurationAssignments",
+                                                    "apiVersion": "2023-04-01",
+                                                    "name": "[concat(split(parameters('maintenanceConfigurationResourceId'),'/')[8],'dynamicassignment1')]",
+                                                    "properties": {
+                                                        "maintenanceConfigurationId": "[parameters('maintenanceConfigurationResourceId')]",
+                                                        "resourceId": "[subscription().id]",
+                                                        "filter": {
+                                                            "locations": "[parameters('locations')]",
+                                                            "osTypes": "[parameters('operatingSystemTypes')]",
+                                                            "resourceGroups": "[parameters('resourceGroups')]",
+                                                            "resourceTypes": "[parameters('resourceTypes')]",
+                                                            "tagSettings": {
+                                                                "filterOperator": "[parameters('tagOperator')]",
+                                                                "tags": "[parameters('tagsDefinition')]"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        "parameters": {
+                                            "maintenanceConfigurationResourceId": {
+                                                "value": "[parameters('maintenanceConfigurationResourceId')]"
+                                            },
+                                            "resourceGroups": {
+                                                "value": "[parameters('resourceGroups')]"
+                                            },
+                                            "operatingSystemTypes": {
+                                                "value": "[parameters('operatingSystemTypes')]"
+                                            },
+                                            "resourceTypes": {
+                                                "value": "[parameters('resourceTypes')]"
+                                            },
+                                            "locations": {
+                                                "value": "[parameters('locations')]"
+                                            },
+                                            "tagsDefinition": {
+                                                "value": "[parameters('tagsDefinition')]"
+                                            },
+                                            "tagOperator": {
+                                                "value": "[parameters('tagOperator')]"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        "parameters": {
+                            "maintenanceConfigurationResourceId": {
+                                "value": "[parameters('maintenanceConfigurationResourceId')]"
+                            },
+                            "resourceGroups": {
+                                "value": "[parameters('resourceGroups')]"
+                            },
+                            "operatingSystemTypes": {
+                                "value": "[parameters('operatingSystemTypes')]"
+                            },
+                            "resourceTypes": {
+                                "value": "[parameters('resourceTypes')]"
+                            },
+                            "locations": {
+                                "value": "[parameters('locations')]"
+                            },
+                            "tagsDefinition": {
+                                "value": "[parameters('tagsDefinition')]"
+                            },
+                            "tagOperator": {
+                                "value": "[parameters('tagOperator')]"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "parameters": {
+        "maintenanceConfigurationResourceId": {
+            "type": "String",
+            "metadata": {
+                "displayName": "Maintenance Configuration ARM ID",
+                "description": "ARM ID of Maintenance Configuration which will be used for scheduling.",
+                "assignPermissions": true
+            }
+        },
+        "resourceGroups": {
+            "type": "Array",
+            "metadata": {
+                "displayName": "Resource groups",
+                "description": "The list of resource groups from which machines need to be targeted. Example: [\"rg1\", \"rg2\"]."
+            },
+            "defaultValue": []
+        },
+        "resourceTypes": {
+            "type": "Array",
+            "metadata": {
+                "displayName": "Resource types",
+                "description": "The list of resource types from which machines need to be targeted."
+            },
+            "allowedValues": [
+                "microsoft.compute/virtualmachines",
+                "microsoft.hybridcompute/machines"
+            ],
+            "defaultValue": [
+                "microsoft.compute/virtualmachines",
+                "microsoft.hybridcompute/machines"
+            ]
+        },
+        "operatingSystemTypes": {
+            "type": "Array",
+            "metadata": {
+                "displayName": "Operating System types",
+                "description": "The list of Operating System types from which machines need to be targeted."
+            },
+            "allowedValues": [
+                "Windows",
+                "Linux"
+            ],
+            "defaultValue": [
+                "Windows",
+                "Linux"
+            ]
+        },
+        "locations": {
+            "type": "Array",
+            "metadata": {
+                "displayName": "Machines locations",
+                "description": "The list of locations from which machines need to be targeted.",
+                "strongType": "location"
+            },
+            "defaultValue": []
+        },
+        "tagsDefinition": {
+            "type": "Object",
+            "metadata": {
+                "displayName": "Tags on machines",
+                "description": "The list of tags that need to matched for getting target machines (case sensitive). Example: [ {\"key\": \"tagKey1\", \"value\": \"value1\"}, {\"key\": \"tagKey2\", \"value\": \"value2\"}]."
+            },
+            "defaultValue": {},
+            "schema": {
+                "description": "A tags definition is made of a sequence of tag name properties and their values as arrays.",
+                "type": "object",
+                "propertyNames": {
+                    "type": "string"
+                },
+                "patternProperties": {
+                    ".*": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "additionalProperties": false
+            }
+        },
+        "tagOperator": {
+            "type": "String",
+            "metadata": {
+                "displayName": "Tags operator",
+                "description": "Matching condition for resource tags"
+            },
+            "allowedValues": [
+                "All",
+                "Any"
+            ],
+            "defaultValue": "Any"
+        },
+        "effect": {
+            "type": "String",
+            "metadata": {
+                "displayName": "Effect",
+                "description": "Enable or disable the execution of the policy"
+            },
+            "allowedValues": [
+                "DeployIfNotExists",
+                "Disabled"
+            ],
+            "defaultValue": "DeployIfNotExists"
+        }
+    }
+}
