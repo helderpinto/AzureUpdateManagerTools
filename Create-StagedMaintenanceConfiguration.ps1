@@ -23,38 +23,6 @@ param(
     [string]$NextStagePropertiesJson 
 )
 
-function ConvertTo-Hashtable {
-    [CmdletBinding()]
-    [OutputType('hashtable')]
-    param (
-        [Parameter(ValueFromPipeline)]
-        $InputObject
-    )
- 
-    process {
-        if ($null -eq $InputObject) {
-            return $null
-        }
- 
-        if ($InputObject -is [System.Collections.IEnumerable] -and $InputObject -isnot [string]) {
-            $collection = @(
-                foreach ($object in $InputObject) {
-                    ConvertTo-Hashtable -InputObject $object
-                }
-            ) 
-            Write-Output -NoEnumerate $collection
-        } elseif ($InputObject -is [psobject]) { 
-            $hash = @{}
-            foreach ($property in $InputObject.PSObject.Properties) {
-                $hash[$property.Name] = ConvertTo-Hashtable -InputObject $property.Value
-            }
-            $hash
-        } else {
-            $InputObject
-        }
-    }
-}
-
 $ErrorActionPreference = "Stop"
 
 $NextStageProperties = $NextStagePropertiesJson | ConvertFrom-Json
@@ -250,12 +218,13 @@ if ($installedPackages.Count -gt 0)
         Write-Output $windowsPackageNames
 
         $deploymentNameTemplate = "{0}-" + (Get-Date).ToString("yyMMddHHmmss")
-        $templateObject = ConvertFrom-Json $maintenanceConfDeploymentTemplateJson | ConvertTo-Hashtable
+        $templateFile = "./$deploymentNameTemplate.json"
+        Set-Content -Path $templateFile -Value $maintenanceConfDeploymentTemplateJson
         if ((Get-AzContext).Subscription.Id -ne $maintenanceConfSubId)
         {
             Select-AzSubscription -SubscriptionId $maintenanceConfSubId | Out-Null
         }
-        New-AzResourceGroupDeployment -TemplateObject $templateObject -ResourceGroupName $maintenanceConfRG -Name ($deploymentNameTemplate -f $maintenanceConfName) | Out-Null
+        New-AzResourceGroupDeployment -TemplateFile $templateFile -ResourceGroupName $maintenanceConfRG -Name ($deploymentNameTemplate -f $maintenanceConfName) | Out-Null
         Write-Output "Maintenance configuration deployed."
 
         foreach ($scope in $stageProperties.scope)
