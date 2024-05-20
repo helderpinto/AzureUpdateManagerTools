@@ -127,7 +127,7 @@ if ($installedPackages.Count -gt 0)
     $maintenanceDuration = ($installedPackages | Select-Object -Property maintenanceDuration -Unique -First 1).maintenanceDuration
     $rebootSetting = ($installedPackages | Select-Object -Property rebootSetting -Unique -First 1).rebootSetting
     $tags = ($installedPackages | Select-Object -Property mcTags -Unique -First 1).mcTags
-    $windowsPackages = ($installedPackages | Where-Object { $_.osType -eq "Windows" } | Select-Object -Property kbId -Unique).kbId
+    $windowsPackages = ($installedPackages | Where-Object { $_.osType -eq "Windows" -and -not([string]::isNullOrEmpty($_.kbId))} | Select-Object -Property kbId -Unique).kbId
     $windowsPackageNames = ($installedPackages | Where-Object { $_.osType -eq "Windows" } | Select-Object -Property patchName -Unique).patchName
     $kbNumbersToInclude = "[ ]"
     if ($windowsPackages)
