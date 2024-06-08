@@ -89,6 +89,9 @@ The [Create-StagedMaintenanceConfiguration.ps1](./Create-StagedMaintenanceConfig
         "offsetDays": {
           "type": "integer"
         },
+        "offsetTimeSpan": {
+          "type": "string"
+        },
         "scope": {
           "type": "array",
           "items": [
@@ -170,7 +173,6 @@ The [Create-StagedMaintenanceConfiguration.ps1](./Create-StagedMaintenanceConfig
       },
       "required": [
         "stageName",
-        "offsetDays",
         "scope",
         "filter"
       ]
@@ -179,7 +181,7 @@ The [Create-StagedMaintenanceConfiguration.ps1](./Create-StagedMaintenanceConfig
 }
 ```
 
-The example below implements a scenario in which the Pre-Production and Production stages are deployed respectively 7 days and 14 days after the reference maintenance configuration (Dev/Test). The maintenance scope is targeted at two subscriptions (`00000000-0000-0000-0000-000000000000` and `00000000-0000-0000-0000-000000000001`), for
+The example below implements a scenario in which the Pre-Production and Production stages are deployed respectively 7 days (with `offsetDays`) and 14 days + 4 hours (with `offsetTimeSpan` in ISO 8601 format) after the reference maintenance configuration (Dev/Test). The maintenance scope is targeted at two subscriptions (`00000000-0000-0000-0000-000000000000` and `00000000-0000-0000-0000-000000000001`), for
 both Windows Azure VMs and Azure Arc-enabled servers tagged with `aum-stage=preprod|prod` and `os-name=windows2019`. The `filter` property follows the format defined
 for Maintenance Configuration Assignments ([see reference](https://learn.microsoft.com/en-us/azure/templates/microsoft.maintenance/configurationassignments?pivots=deployment-language-arm-template)).
 
@@ -218,7 +220,7 @@ for Maintenance Configuration Assignments ([see reference](https://learn.microso
     },
     {
         "stageName": "windows2019-prod",
-        "offsetDays": 14,
+        "offsetTimeSpan": "P14DT4H",
         "scope": [
             "/subscriptions/00000000-0000-0000-0000-000000000000",
             "/subscriptions/00000000-0000-0000-0000-000000000001"
