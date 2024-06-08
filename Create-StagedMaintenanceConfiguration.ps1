@@ -166,9 +166,24 @@ if ($installedPackages.Count -gt 0)
 
     foreach ($stageProperties in $NextStageProperties) 
     {
-        $stageDayOfWeek = $lastDeploymentDate.AddDays($stageProperties.offsetDays).DayOfWeek
-        $stageStartTime = $lastDeploymentDate.AddDays($stageProperties.offsetDays).ToString("u").Substring(0,16)
-        $stageEndTime = $lastDeploymentDate.AddDays($stageProperties.offsetDays).AddHours(5).ToString("u").Substring(0,16)
+        if (-not([string]::IsNullOrEmpty($stageProperties.offsetTimeSpan)))
+        {
+            $offsetTS = [Xml.XmlConvert]::ToTimeSpan($stageProperties.offsetTimeSpan)            
+            $stageDayOfWeek = $lastDeploymentDate.Add($offsetTS).DayOfWeek
+            $stageStartTime = $lastDeploymentDate.Add($offsetTS).ToString("u").Substring(0,16)
+            $stageEndTime = $lastDeploymentDate.Add($offsetTS).AddHours(5).ToString("u").Substring(0,16)
+        }
+        elseif ($stageProperties.offsetDays -gt 0)
+        {
+            $stageDayOfWeek = $lastDeploymentDate.AddDays($stageProperties.offsetDays).DayOfWeek
+            $stageStartTime = $lastDeploymentDate.AddDays($stageProperties.offsetDays).ToString("u").Substring(0,16)
+            $stageEndTime = $lastDeploymentDate.AddDays($stageProperties.offsetDays).AddHours(5).ToString("u").Substring(0,16)
+        }
+        else
+        {   
+            throw "No offset time span or days defined for stage $($stageProperties.stageName)"
+        }
+        $offsetTS = $stageProperties.offsetTimeSpan
         $maintenanceConfName = $stageProperties.stageName
         $maintenanceConfSubId = $MaintenanceConfigurationId.Split("/")[2]
         $maintenanceConfRG = $MaintenanceConfigurationId.Split("/")[4]
@@ -213,7 +228,7 @@ if ($installedPackages.Count -gt 0)
             ]
         }
 "@
-        Write-Output "Creating/updating $maintenanceConfName maintenance configuration for the following packages:"
+        Write-Output "Creating/updating $maintenanceConfName maintenance configuration to be run on $stageStartTime for the following packages:"
         Write-Output $linuxPatches
         Write-Output $windowsPackageNames
 
