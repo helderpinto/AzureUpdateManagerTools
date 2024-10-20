@@ -1,6 +1,6 @@
 # Azure Update Manager Tools
 
-This repository contains tools for managing [Azure Update Manager](https://learn.microsoft.com/en-us/azure/update-center/overview) scenarios.
+This repository contains tools for managing [Azure Update Manager](https://learn.microsoft.com/azure/update-center/overview) scenarios.
 
 ## Staged Patching with Azure Automation
 
@@ -34,37 +34,47 @@ You can choose whatever tagging strategy that meets your staged patching require
   * After stage 1, create/update stage 2 based on the results of stage 1
   * etc.
 
-**IMPORTANT**: you must ensure the last stage (production) is not scheduled after the next iteration of the phase 0 stage, otherwise you will end up having the production Maintenance Configuration overwritten with a new schedule/patch selection before it is actually deployed. Also, bear in mind that, as [Azure Resource Graph keeps the patching results history for up to 30 days](https://learn.microsoft.com/en-us/azure/update-center/query-logs), your updates cycle must not exceed this interval.
+**IMPORTANT**: you must ensure the last stage (production) is not scheduled after the next iteration of the phase 0 stage, otherwise you will end up having the production Maintenance Configuration overwritten with a new schedule/patch selection before it is actually deployed. Also, bear in mind that, as [Azure Resource Graph keeps the patching results history for up to 30 days](https://learn.microsoft.com/azure/update-center/query-logs), your updates cycle must not exceed this interval.
 
-Validating the quality of the patching stages before production is one important perspective not addressed by this solution. It is not sufficient to patch dev/test servers - we must ensure the patches pass minimum quality tests before reaching production. At this moment, you must run a parallel process that performs this validation (e.g., automated tests running in the patched servers). With the support for [post-maintenance tasks](https://learn.microsoft.com/en-us/azure/update-manager/pre-post-scripts-overview) in Azure Update Manager, you can integrate quality assurance in this solution.
+Validating the quality of the patching stages before production is one important perspective not addressed by this solution. It is not sufficient to patch dev/test servers - we must ensure the patches pass minimum quality tests before reaching production. At this moment, you must run a parallel process that performs this validation (e.g., automated tests running in the patched servers). With the support for [post-maintenance tasks](https://learn.microsoft.com/azure/update-manager/pre-post-scripts-overview) in Azure Update Manager, you can integrate quality assurance in this solution.
 
 ### Pre-requisites
 
-* The machines in the scope of this solution must be [supported by Azure Update Manager](https://learn.microsoft.com/en-us/azure/update-center/support-matrix) and fulfill its [pre-requisites](https://learn.microsoft.com/en-us/azure/update-center/overview?tabs=azure-vms#prerequisites).
-* The machines in the scope of this solution must have the [Customer Managed Schedules patch orchestration mode](https://learn.microsoft.com/en-us/azure/update-center/manage-update-settings), a pre-requisite for [scheduled patching](https://learn.microsoft.com/en-us/azure/update-center/scheduled-patching).
+* The machines in the scope of this solution must be [supported by Azure Update Manager](https://learn.microsoft.com/azure/update-center/support-matrix) and fulfill its [pre-requisites](https://learn.microsoft.com/azure/update-center/overview?tabs=azure-vms#prerequisites).
+* The machines in the scope of this solution must have the [Customer Managed Schedules patch orchestration mode](https://learn.microsoft.com/azure/update-center/manage-update-settings), a pre-requisite for [scheduled patching](https://learn.microsoft.com/azure/update-center/scheduled-patching).
 * At least one recurrent scheduled patching Maintenance Configuration covering a part of the machines in scope. As this maintenance configuration will serve as the reference for the following patching stages, it should be assigned to non-production machines and, ideally, recur every few weeks. See the above recommendations for an effective patching strategy.
 * An Azure Automation Account with an associated Managed Identity (can be a system or user-assigned identity) and the following modules installed: `Az.Accounts`, `Az.Resources`, and `Az.ResourceGraph`. This solution is based on an Automation Account, but you can use other approaches, such as Azure Functions.
 * The Automation Account Managed Identity must have the following **minimum** permissions (as a custom role) on the subscription where the reference maintenance configuration was created:
   * */read
   * Microsoft.Maintenance/maintenanceConfigurations/write
   * Microsoft.Maintenance/configurationAssignments/write
+  * Microsoft.Maintenance/applyupdates/write
   * Microsoft.Resources/deployments/*
 
 ### Setup instructions
 
 1. Ensure your Azure VMs and Azure Arc-enabled servers are tagged according to the staged patching strategy you defined (see above). Use tags to group your servers according to their patching phase and OS version.
-1. Create a recurrent scheduled patching Maintenance Configuration for Phase 0 of each OS version in your environment. See instructions [here](https://learn.microsoft.com/en-us/azure/update-center/scheduled-patching?tabs=schedule-updates-single-machine%2Cschedule-updates-scale-overview#schedule-recurring-updates-at-scale). Assign this Maintenance Configuration to the servers that will serve as the initial testbed for your patches. You can assign servers either directly to the Maintenance Configuration or dynamically, with a [Dynamic Scope](https://learn.microsoft.com/en-us/azure/update-center/manage-dynamic-scoping).
-1. Create or reuse an [Azure Automation Account](https://learn.microsoft.com/en-us/azure/automation/automation-create-standalone-account).
-1. Install all required Automation Account modules (`Az.Accounts` and `Az.Resources` are usually built-in, but `Az.ResourceGraph` is not). See [here](https://learn.microsoft.com/en-us/azure/automation/shared-resources/modules#import-az-modules) how to install additional modules.
+1. Create a recurrent scheduled patching Maintenance Configuration for Phase 0 of each OS version in your environment. See instructions [here](https://learn.microsoft.com/azure/update-center/scheduled-patching?tabs=schedule-updates-single-machine%2Cschedule-updates-scale-overview#schedule-recurring-updates-at-scale). Assign this Maintenance Configuration to the servers that will serve as the initial testbed for your patches. You can assign servers either directly to the Maintenance Configuration or dynamically, with a [Dynamic Scope](https://learn.microsoft.com/azure/update-center/manage-dynamic-scoping).
+1. Create or reuse an [Azure Automation Account](https://learn.microsoft.com/azure/automation/automation-create-standalone-account).
+1. Install all required Automation Account modules (`Az.Accounts` and `Az.Resources` are usually built-in, but `Az.ResourceGraph` is not). See [here](https://learn.microsoft.com/azure/automation/shared-resources/modules#import-az-modules) how to install additional modules.
 1. Assign a Managed Identity to the Automation Account and grant it the required privileges (see pre-requisites above).
-1. Import the [Create-StagedMaintenanceConfiguration.ps1](./Create-StagedMaintenanceConfiguration.ps1) Runbook into the Automation Account, by following [these steps](https://learn.microsoft.com/en-us/azure/automation/manage-runbooks#import-a-runbook). Download the runbook first to your local machine. The runbook must be configured as PowerShell 5.1. Don't forget to publish the runbook (draft runbooks cannot be scheduled).
-1. Create an [Azure Automation schedule](https://learn.microsoft.com/en-us/azure/automation/shared-resources/schedules#create-a-schedule) for each of the Phase 0 Maintenance Configurations (one per OS version). The schedule must have the same frequency as the Maintenance Configuration it refers to, with at least an 8-hour offset. For example, if the Maintenance Configuration is scheduled on Mondays, every 2 weeks at 8:00 p.m., then the respective Azure Automation schedule should be scheduled on Tuesdays, every 2 weeks at least at 4:00 a.m.
+1. Import the [Create-StagedMaintenanceConfiguration.ps1](./Create-StagedMaintenanceConfiguration.ps1) Runbook into the Automation Account, by following [these steps](https://learn.microsoft.com/azure/automation/manage-runbooks#import-a-runbook). Download the runbook first to your local machine. The runbook must be configured as PowerShell 5.1. Don't forget to publish the runbook (draft runbooks cannot be scheduled).
+1. Create an [Azure Automation schedule](https://learn.microsoft.com/azure/automation/shared-resources/schedules#create-a-schedule) for each of the Phase 0 Maintenance Configurations (one per OS version). The schedule must have the same frequency as the Maintenance Configuration it refers to, with at least an 8-hour offset. For example, if the Maintenance Configuration is scheduled on Mondays, every 2 weeks at 8:00 p.m., then the respective Azure Automation schedule should be scheduled on Tuesdays, every 2 weeks at least at 4:00 a.m.
 1. Link the `Create-StagedMaintenanceConfiguration` runbook to each of the schedules and specify its parameters according to the instructions below. To obtain the Maintenance Configuration ID, check the "Properties" blade of the Maintenance Configuration.
 1. (Optional) If you prefer to adopt a more conservative chained staged approach, you need to create additional schedules (for further stages before production) and link them to the same runbook. In this case, you will have to anticipate the Maintenance Configuration IDs that will result from the previous stages' executions, which will be in the form `/subscriptions/<phase 0 maintenance configuration subscription ID>/resourceGroups/<phase 0 maintenance configuration resource group>/providers/Microsoft.Maintenance/maintenanceConfigurations/<previous stage name>`.
 
 ### Pre- and post-maintenance tasks
 
-Pre- and post-maintenance tasks in Azure Update Manager follow an event-based architecture, in which you subscribe to events coming from a system topic associated to the Configuration Maintenance, and use, for example, an Azure Automation runbook or Azure Function as the destination of the event. You can learn more about how to configure pre- and post-maintenance tasks in the Azure Update Manager [pre and post events overview](https://learn.microsoft.com/en-us/azure/update-manager/pre-post-scripts-overview), and also on the [how-to guide](https://learn.microsoft.com/en-us/azure/update-manager/manage-pre-post-events) and tutorials for [Azure Automation](https://learn.microsoft.com/en-us/azure/update-manager/tutorial-webhooks-using-runbooks)- and [Azure Functions](https://learn.microsoft.com/en-us/azure/update-manager/tutorial-using-functions)-based tasks. You can find in this repository a code sample for one of the pre- and post-maintenance scenarios: turn machines on with [Start-StagedMaintenanceVMs.ps1](./Start-StagedMaintenanceVMs.ps1) and turn them off with [Deallocate-StagedMaintenanceVMs.ps1](,/Deallocate-StagedMaintenanceVMs.ps1).
+Pre- and post-maintenance tasks in Azure Update Manager follow an event-based architecture, in which you subscribe to events coming from a system topic associated 
+to the Configuration Maintenance, and use, for example, an Azure Automation runbook or Azure Function as the destination of the event. You can learn more about how 
+to configure pre- and post-maintenance tasks in the Azure Update Manager [pre and post events overview](https://learn.microsoft.com/azure/update-manager/pre-post-scripts-overview), 
+and also on the [how-to guide](https://learn.microsoft.com/azure/update-manager/manage-pre-post-events) and tutorials for [Azure Automation](https://learn.microsoft.com/azure/update-manager/tutorial-webhooks-using-runbooks)-
+and [Azure Functions](https://learn.microsoft.com/azure/update-manager/tutorial-using-functions)-based tasks. You can find in this repository two code samples for the 
+pre- and post-maintenance scenarios: 
+
+* Turn machines on if needed with [Start-StagedMaintenanceVMs.ps1](./Start-StagedMaintenanceVMs.ps1) and turn them all off with [Deallocate-StagedMaintenanceVMs.ps1](./Deallocate-StagedMaintenanceVMs.ps1). This requires the Virtual Machine Contributor role to be granted to the Automation Account managed identity in the scope of the VMs to be managed (management group, subscription, or resource group).
+* Take an OS disk snapshot and turn machines on if needed, but cancel the maintenance if something fails with [Start-VMsWithStateAndSnapshot.ps1](./Start-VMsWithStateAndSnapshot.ps1). Turn off only the machines that were turned on in pre-maintenance task with [Deallocate-VMsWithState.ps1](./Deallocate-VMsWithState.ps1).
+This requires the Virtual Machine Contributor, Automation Contribuor, and Disk Snapshot Contributor roles to be granted to the Automation Account managed identity in the scope of the VMs to be managed (management group, subscription, or resource group).
 
 NOTE: the staged patching solution here described does not propagate pre- and post-maintenance tasks coming from the reference maintenance configuration to the following stages, but you can manually configure them once the subsequent stages have been created for the first time.
 
@@ -183,7 +193,7 @@ The [Create-StagedMaintenanceConfiguration.ps1](./Create-StagedMaintenanceConfig
 
 The example below implements a scenario in which the Pre-Production and Production stages are deployed respectively 7 days (with `offsetDays`) and 14 days + 4 hours (with `offsetTimeSpan` in ISO 8601 format) after the reference maintenance configuration (Dev/Test). The maintenance scope is targeted at two subscriptions (`00000000-0000-0000-0000-000000000000` and `00000000-0000-0000-0000-000000000001`), for
 both Windows Azure VMs and Azure Arc-enabled servers tagged with `aum-stage=preprod|prod` and `os-name=windows2019`. The `filter` property follows the format defined
-for Maintenance Configuration Assignments ([see reference](https://learn.microsoft.com/en-us/azure/templates/microsoft.maintenance/configurationassignments?pivots=deployment-language-arm-template)).
+for Maintenance Configuration Assignments ([see reference](https://learn.microsoft.com/azure/templates/microsoft.maintenance/configurationassignments?pivots=deployment-language-arm-template)).
 
 ```json
 [
