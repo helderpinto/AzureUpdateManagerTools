@@ -120,6 +120,66 @@ do
 
 Write-Output "$($installedPackages.Count) packages were installed in the latest run for maintenance configuration $MaintenanceConfigurationId."
 
+# Query for failed packages
+$failedPackages = @()
+$resultsSoFar = 0
+
+Write-Output "Querying for packages that failed to install..."
+
+$argQueryFailed = @"
+patchinstallationresources
+| where type endswith '/patchinstallationresults'
+| extend maintenanceRunId=tolower(split(properties.maintenanceRunId,'/providers/microsoft.maintenance/applyupdates')[0])
+| where maintenanceRunId =~ '$MaintenanceConfigurationId'
+| where todatetime(properties.lastModifiedDateTime) > todatetime('$($lastRunDateTime[0].lastRunDateTime.ToString("u"))')
+| extend vmId = tostring(split(tolower(id), '/patchinstallationresults/')[0])
+| extend osType = tostring(properties.osType)
+| extend lastDeploymentStart = tostring(properties.startDateTime)
+| extend deploymentStatus = tostring(properties.status)
+| join kind=inner (
+    patchinstallationresources
+    | where type endswith '/patchinstallationresults/softwarepatches'
+    | where todatetime(properties.lastModifiedDateTime) > todatetime('$($lastRunDateTime[0].lastRunDateTime.ToString("u"))')
+    | extend vmId = tostring(split(tolower(id), '/patchinstallationresults/')[0])
+    | extend patchName = tostring(properties.patchName)
+    | extend patchVersion = tostring(properties.version)
+    | extend kbId = tostring(properties.kbId)
+    | extend installationState = tostring(properties.installationState)
+    | project vmId, installationState, patchName, patchVersion, kbId
+) on vmId
+| join kind=inner ( 
+    resources
+    | where type == 'microsoft.maintenance/maintenanceconfigurations'
+    | extend maintenanceDuration = tostring(properties.maintenanceWindow.duration)
+    | extend rebootSetting = tostring(properties.installPatches.rebootSetting)
+    | project maintenanceRunId=tolower(id), maintenanceDuration, rebootSetting, location, mcTags=tostring(tags)
+) on maintenanceRunId
+| where installationState != 'Installed'
+| distinct osType, lastDeploymentStart, maintenanceDuration, patchName, patchVersion, kbId, installationState, location, mcTags
+"@
+
+do
+{
+    if ($resultsSoFar -eq 0)
+    {
+        $packages = Search-AzGraph -Query $argQueryFailed -First $ARGPageSize -Subscription $subscriptions
+    }
+    else
+    {
+        $packages = Search-AzGraph -Query $argQueryFailed -First $ARGPageSize -Skip $resultsSoFar -Subscription $subscriptions
+    }
+    if ($packages -and $packages.GetType().Name -eq "PSResourceGraphResponse")
+    {
+        $packages = $packages.Data
+    }
+    $resultsCount = $packages.Count
+    $resultsSoFar += $resultsCount
+    $failedPackages += $packages
+
+} while ($resultsCount -eq $ARGPageSize)
+
+Write-Output "$($failedPackages.Count) packages failed to install in the latest run for maintenance configuration $MaintenanceConfigurationId."
+
 if ($installedPackages.Count -gt 0) 
 {
     $lastDeploymentDate = ($installedPackages | Select-Object -Property lastDeploymentStart -Unique -First 1).lastDeploymentStart
@@ -270,6 +330,44 @@ if ($installedPackages.Count -gt 0)
                 throw "Maintenance configuration assignment creation/update failed (HTTP $($response.StatusCode))."
             }
         }
+    }
+
+    # Output failed packages information
+    if ($failedPackages.Count -gt 0) 
+    {
+        Write-Output ""
+        Write-Output "=== FAILED PACKAGE INSTALLATIONS ==="
+        $windowsFailedPackages = ($failedPackages | Where-Object { $_.osType -eq "Windows" } | Select-Object -Property patchName, installationState -Unique)
+        $linuxFailedPackages = ($failedPackages | Where-Object { $_.osType -eq "Linux" } | Select-Object -Property patchName, installationState -Unique)
+        
+        if ($windowsFailedPackages.Count -gt 0)
+        {
+            Write-Output "Windows packages that failed to install:"
+            foreach ($failedPkg in $windowsFailedPackages)
+            {
+                Write-Output "  - $($failedPkg.patchName) (Status: $($failedPkg.installationState))"
+            }
+        }
+        
+        if ($linuxFailedPackages.Count -gt 0)
+        {
+            Write-Output "Linux packages that failed to install:"
+            foreach ($failedPkg in $linuxFailedPackages)
+            {
+                Write-Output "  - $($failedPkg.patchName) (Status: $($failedPkg.installationState))"
+            }
+        }
+        
+        # Group by installation state for summary
+        $failureStates = $failedPackages | Group-Object -Property installationState | Sort-Object -Property Count -Descending
+        Write-Output ""
+        Write-Output "Failure summary by state:"
+        foreach ($state in $failureStates)
+        {
+            Write-Output "  - $($state.Name): $($state.Count) packages"
+        }
+        Write-Output "=== END FAILED INSTALLATIONS ==="
+        Write-Output ""
     }
 }
 else 
